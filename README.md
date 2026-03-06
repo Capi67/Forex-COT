@@ -1,0 +1,2 @@
+# Forex-COT
+Forex Cot

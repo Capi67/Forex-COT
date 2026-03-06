@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>MACRO INTEL — COT Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Barlow+Condensed:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070a0d;--s1:#0c1015;--s2:#111820;--s3:#161f2a;
+  --b1:#1a2535;--b2:#243040;
+  --tx:#b8cad8;--td:#4a6070;--tb:#e2edf5;
+  --g:#00e5b0;--gg:rgba(0,229,176,.13);
+  --r:#ff3d57;--rg:rgba(255,61,87,.13);
+  --a:#f5a623;--ag:rgba(245,166,35,.13);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:'JetBrains Mono',monospace;overflow-x:hidden}
+
+/* ── HEADER ── */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:50px;background:var(--s1);border-bottom:1px solid var(--b1);position:sticky;top:0;z-index:50}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:900;letter-spacing:.18em;color:var(--tb);line-height:1}
+.logo em{color:#00e5b0;font-style:normal}
+.logo-sub{font-size:7px;color:var(--td);letter-spacing:.16em;margin-top:2px}
+.hdr-r{display:flex;align-items:center;gap:8px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--td)}
+.dot.live{background:var(--g);animation:blink 2s infinite}
+.dot.loading{background:var(--a);animation:blink .5s infinite}
+.dot.error{background:var(--r)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.stxt{font-size:9px;color:var(--td);white-space:nowrap}
+.btn{background:transparent;border:1px solid var(--b2);color:var(--tx);padding:5px 10px;font-family:'JetBrains Mono',monospace;font-size:9px;cursor:pointer;letter-spacing:.08em;transition:border-color .2s,color .2s;border-radius:2px}
+.btn:active{border-color:#00e5b0;color:#00e5b0}
+
+/* ── STRENGTH BAR ── */
+.strength-scroll{overflow-x:auto;scrollbar-width:none;background:var(--s1);border-bottom:1px solid var(--b1)}
+.strength-scroll::-webkit-scrollbar{display:none}
+.strength-inner{display:flex;gap:0;padding:0;min-width:max-content}
+.curr-chip{display:flex;flex-direction:column;align-items:center;padding:8px 14px;border-right:1px solid var(--b1);cursor:default;min-width:72px;gap:3px}
+.chip-name{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:800;letter-spacing:.06em;color:var(--tb)}
+.chip-z{font-size:10px;font-weight:700}
+.chip-mini-bar{width:44px;height:3px;background:var(--s3);border-radius:2px;position:relative;overflow:hidden}
+.chip-mini-fill{position:absolute;top:0;height:100%;border-radius:2px;transition:width .7s ease,left .7s ease}
+
+/* ── CATEGORY FILTERS ── */
+.filters-scroll{overflow-x:auto;scrollbar-width:none;background:var(--s2);border-bottom:1px solid var(--b1)}
+.filters-scroll::-webkit-scrollbar{display:none}
+.filters-inner{display:flex;gap:0;padding:0;min-width:max-content}
+.fchip{padding:9px 16px;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--td);cursor:pointer;border-right:1px solid var(--b1);transition:color .2s;white-space:nowrap;border-bottom:2px solid transparent}
+.fchip.active{color:#00e5b0;border-bottom-color:#00e5b0}
+.fchip:active{color:var(--tb)}
+
+/* ── BANNER ── */
+#banner{font-size:9px;line-height:1.6;display:none;padding:8px 14px}
+#banner.ok{background:rgba(0,229,176,.07);border-bottom:1px solid rgba(0,229,176,.15);color:var(--g);display:block}
+#banner.warn{background:rgba(245,166,35,.07);border-bottom:1px solid rgba(245,166,35,.2);color:var(--a);display:block}
+#banner.bad{background:rgba(255,61,87,.07);border-bottom:1px solid rgba(255,61,87,.18);color:var(--r);display:block}
+
+/* ── DEBUG ── */
+#dbg{background:#050708;padding:8px 14px;font-size:8px;color:#f87;display:none;line-height:1.7;max-height:100px;overflow-y:auto;border-bottom:1px solid #111}
+
+/* ── PAIRS LIST ── */
+#pairsList{padding-bottom:20px}
+.group-header{padding:10px 14px 6px;font-family:'Barlow Condensed',sans-serif;font-size:9px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--td);border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:8px}
+.group-header::after{content:'';flex:1;height:1px;background:var(--b1)}
+.pair-row{display:grid;grid-template-columns:90px 1fr 90px;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(26,37,53,.7);cursor:pointer;transition:background .15s;gap:10px}
+.pair-row:active{background:var(--s2)}
+.pr-name{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--tb);line-height:1}
+.pr-type{font-size:7px;color:var(--td);letter-spacing:.1em;margin-top:2px}
+.pr-type.syn{color:rgba(74,96,112,.8)}
+.pr-mid{display:flex;flex-direction:column;gap:5px}
+.pr-zval{font-size:10px;font-weight:700;text-align:center}
+.zbar-t{height:4px;background:var(--s3);border-radius:2px;position:relative}
+.zbar-neg{position:absolute;top:0;left:0;height:100%;width:50%;background:var(--r);opacity:.22;border-radius:2px 0 0 2px}
+.zbar-pos{position:absolute;top:0;right:0;height:100%;width:50%;background:var(--g);opacity:.22;border-radius:0 2px 2px 0}
+.zbar-cur{position:absolute;top:50%;width:8px;height:8px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 8px currentColor;transition:left .7s cubic-bezier(.34,1.4,.64,1)}
+.pr-right{text-align:right}
+.pr-price{font-size:11px;color:var(--tx);margin-bottom:4px;font-weight:500}
+.badge{display:inline-block;font-size:7px;font-weight:700;letter-spacing:.08em;padding:2px 6px;text-transform:uppercase;border-radius:2px}
+.badge.long{background:var(--gg);color:var(--g);border:1px solid rgba(0,229,176,.3)}
+.badge.short{background:var(--rg);color:var(--r);border:1px solid rgba(255,61,87,.3)}
+.badge.neutral{background:var(--ag);color:var(--a);border:1px solid rgba(245,166,35,.3)}
+.badge.pending{color:var(--td);border:1px solid var(--b1)}
+
+/* ── BOTTOM SHEET ── */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:98;display:none;opacity:0;transition:opacity .3s}
+#overlay.active{display:block;opacity:1}
+#sheet{
+  position:fixed;bottom:0;left:0;right:0;
+  background:var(--s1);border-top:1px solid var(--b1);
+  border-radius:16px 16px 0 0;
+  transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);
+  z-index:99;max-height:88vh;overflow-y:auto;
+}
+#sheet.open{transform:translateY(0)}
+.sheet-handle{width:36px;height:4px;background:var(--b2);border-radius:2px;margin:12px auto 16px;cursor:pointer}
+.sheet-hdr{padding:0 16px 14px;border-bottom:1px solid var(--b1)}
+.sh-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.sh-pair{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--tb);line-height:1}
+.sh-price-block{text-align:right}
+.sh-price{font-size:22px;font-weight:500;color:var(--tb);line-height:1}
+.sh-price-lbl{font-size:7px;color:var(--td);letter-spacing:.1em;text-transform:uppercase;margin-top:3px}
+.sh-signal{margin-top:6px}
+.sheet-body{padding:14px 16px}
+.sh-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.sh-stat{background:var(--s2);border:1px solid var(--b1);padding:10px 12px;border-radius:2px}
+.sh-stat-lbl{font-size:7px;color:var(--td);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+.sh-stat-val{font-size:18px;font-weight:700}
+.sh-zbar-wrap{margin-bottom:14px}
+.sh-zbar-lbl{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.sh-zbar-lbl span:first-child{font-size:8px;color:var(--td);letter-spacing:.1em;text-transform:uppercase}
+.sh-zbar-t{height:6px;background:var(--s3);border-radius:3px;position:relative}
+.sh-zbar-labels{display:flex;justify-content:space-between;font-size:7px;color:var(--td);margin-top:4px}
+.sh-chart-lbl{font-size:8px;color:var(--td);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.sh-interp{background:var(--s2);border-left:3px solid #00e5b0;padding:12px 14px;font-size:10px;line-height:1.8;color:var(--tx);margin-bottom:14px;border-radius:0 2px 2px 0}
+.sh-interp strong{color:var(--tb)}
+.sh-source{font-size:8px;color:var(--td);margin-bottom:14px;line-height:1.6}
+.sh-close{width:100%;padding:11px;background:transparent;border:1px solid var(--b2);color:var(--tx);font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;letter-spacing:.1em;border-radius:2px;transition:border-color .2s}
+.sh-close:active{border-color:#00e5b0;color:#00e5b0}
+
+/* ── LOADING ── */
+.ld{display:flex;align-items:center;gap:9px;font-size:10px;color:var(--td);padding:20px 14px}
+.spin{display:inline-block;width:12px;height:12px;border:1.5px solid var(--b2);border-top-color:#00e5b0;border-radius:50%;animation:sp .8s linear infinite;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div>
+    <div class="logo">MACRO<em>INTEL</em></div>
+    <div class="logo-sub">COT POSITIONING · 29 PAIRES</div>
+  </div>
+  <div class="hdr-r">
+    <div class="dot loading" id="sDot"></div>
+    <span class="stxt" id="sTxt">Init…</span>
+    <button class="btn" onclick="init()">⟳</button>
+    <button class="btn" onclick="toggleDbg()">dbg</button>
+  </div>
+</header>
+
+<!-- Currency Strength Bar -->
+<div class="strength-scroll">
+  <div class="strength-inner" id="strengthBar">
+    <div class="ld" style="padding:8px 14px"><div class="spin"></div></div>
+  </div>
+</div>
+
+<!-- Category Filters -->
+<div class="filters-scroll">
+  <div class="filters-inner" id="filtersBar"></div>
+</div>
+
+<div id="banner"></div>
+<div id="dbg"></div>
+
+<!-- Pairs List -->
+<div id="pairsList">
+  <div class="ld"><div class="spin"></div>Chargement des données CFTC…</div>
+</div>
+
+<!-- Overlay + Bottom Sheet -->
+<div id="overlay" onclick="closeSheet()"></div>
+<div id="sheet">
+  <div class="sheet-handle" onclick="closeSheet()"></div>
+  <div class="sheet-hdr">
+    <div class="sh-top">
+      <div>
+        <div class="sh-pair" id="shPair">—</div>
+        <div class="sh-signal" id="shSig"></div>
+      </div>
+      <div class="sh-price-block">
+        <div class="sh-price" id="shPrice">—</div>
+        <div class="sh-price-lbl">Cours</div>
+      </div>
+    </div>
+  </div>
+  <div class="sheet-body">
+    <div class="sh-grid">
+      <div class="sh-stat">
+        <div class="sh-stat-lbl">Z-Score COT</div>
+        <div class="sh-stat-val" id="shZ">—</div>
+      </div>
+      <div class="sh-stat">
+        <div class="sh-stat-lbl">Net Base (COT)</div>
+        <div class="sh-stat-val" id="shNet">—</div>
+      </div>
+    </div>
+    <div class="sh-zbar-wrap">
+      <div class="sh-zbar-lbl">
+        <span>Positionnement — 52 semaines</span>
+        <span style="font-size:8px;color:var(--td)" id="shDate">—</span>
+      </div>
+      <div class="sh-zbar-t">
+        <div class="zbar-neg"></div><div class="zbar-pos"></div>
+        <div class="zbar-cur" id="shZcur" style="left:50%;background:var(--td);color:var(--td)"></div>
+      </div>
+      <div class="sh-zbar-labels">
+        <span style="color:var(--r)">−3σ extrême short</span>
+        <span style="color:var(--g)">+3σ extrême long</span>
+      </div>
+    </div>
+    <div class="sh-chart-lbl" id="shChartLbl">Net Positioning</div>
+    <canvas id="shChart" height="100" style="width:100%;display:block;margin-bottom:14px"></canvas>
+    <div class="sh-interp" id="shInterp">—</div>
+    <div class="sh-source" id="shSource">—</div>
+    <button class="sh-close" onclick="closeSheet()">✕ Fermer</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════
+
+const BASE_COT = {
+  EUR:{ kw:'EURO FX',            seed: 1.2, scale:80000 },
+  GBP:{ kw:'BRITISH POUND',      seed: 0.6, scale:55000 },
+  JPY:{ kw:'JAPANESE YEN',       seed:-1.8, scale:90000 },
+  AUD:{ kw:'AUSTRALIAN DOLLAR',  seed:-1.3, scale:65000 },
+  CAD:{ kw:'CANADIAN DOLLAR',    seed: 0.4, scale:50000 },
+  NZD:{ kw:'NEW ZEALAND DOLLAR', seed:-0.7, scale:40000 },
+  CHF:{ kw:'SWISS FRANC',        seed:-0.5, scale:35000 },
+  XAU:{ kw:'GOLD',               seed: 2.1, scale:200000},
+};
+
+const GROUPS = ['Tous','Majeurs','EUR','GBP','AUD/NZD','CHF/JPY','Gold'];
+
+// z_pair = z_base - z_quote  (z_USD = 0 always)
+const PAIRS = [
+  // MAJEURS
+  {name:'EUR/USD',base:'EUR',quote:'USD',group:'Majeurs'},
+  {name:'GBP/USD',base:'GBP',quote:'USD',group:'Majeurs'},
+  {name:'USD/JPY',base:'USD',quote:'JPY',group:'Majeurs'},
+  {name:'AUD/USD',base:'AUD',quote:'USD',group:'Majeurs'},
+  {name:'USD/CAD',base:'USD',quote:'CAD',group:'Majeurs'},
+  {name:'NZD/USD',base:'NZD',quote:'USD',group:'Majeurs'},
+  {name:'USD/CHF',base:'USD',quote:'CHF',group:'Majeurs'},
+  // EUR CROSSES
+  {name:'EUR/GBP',base:'EUR',quote:'GBP',group:'EUR'},
+  {name:'EUR/JPY',base:'EUR',quote:'JPY',group:'EUR'},
+  {name:'EUR/AUD',base:'EUR',quote:'AUD',group:'EUR'},
+  {name:'EUR/CAD',base:'EUR',quote:'CAD',group:'EUR'},
+  {name:'EUR/CHF',base:'EUR',quote:'CHF',group:'EUR'},
+  {name:'EUR/NZD',base:'EUR',quote:'NZD',group:'EUR'},
+  // GBP CROSSES
+  {name:'GBP/JPY',base:'GBP',quote:'JPY',group:'GBP'},
+  {name:'GBP/AUD',base:'GBP',quote:'AUD',group:'GBP'},
+  {name:'GBP/CAD',base:'GBP',quote:'CAD',group:'GBP'},
+  {name:'GBP/CHF',base:'GBP',quote:'CHF',group:'GBP'},
+  {name:'GBP/NZD',base:'GBP',quote:'NZD',group:'GBP'},
+  // AUD / NZD CROSSES
+  {name:'AUD/JPY',base:'AUD',quote:'JPY',group:'AUD/NZD'},
+  {name:'AUD/CAD',base:'AUD',quote:'CAD',group:'AUD/NZD'},
+  {name:'AUD/CHF',base:'AUD',quote:'CHF',group:'AUD/NZD'},
+  {name:'AUD/NZD',base:'AUD',quote:'NZD',group:'AUD/NZD'},
+  {name:'NZD/JPY',base:'NZD',quote:'JPY',group:'AUD/NZD'},
+  {name:'NZD/CAD',base:'NZD',quote:'CAD',group:'AUD/NZD'},
+  {name:'NZD/CHF',base:'NZD',quote:'CHF',group:'AUD/NZD'},
+  // CHF / JPY / CAD
+  {name:'CHF/JPY',base:'CHF',quote:'JPY',group:'CHF/JPY'},
+  {name:'CAD/JPY',base:'CAD',quote:'JPY',group:'CHF/JPY'},
+  {name:'CAD/CHF',base:'CAD',quote:'CHF',group:'CHF/JPY'},
+  // GOLD
+  {name:'XAU/USD',base:'XAU',quote:'USD',group:'Gold'},
+];
+
+const CFTC    = 'https://publicreporting.cftc.gov/resource/6dca-aqww.json';
+const FX_BASE = 'https://api.frankfurter.app/latest';
+const PROXIES = [
+  u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+];
+
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+const ST = {
+  baseZ:  {},   // {EUR: 1.2, GBP: 0.6, ...}
+  baseNets:{},  // {EUR: [{date,net,z},...], ...}
+  prices: {},   // {'EUR/USD': 1.08245, ...}
+  pairData:[],  // computed per PAIRS index
+  activeGroup:'Tous',
+  selIdx: null,
+  demo: false,
+};
+const LOG = [];
+
+// ══════════════════════════════════════════════════
+// DEBUG
+// ══════════════════════════════════════════════════
+function dbg(m,e=false){
+  const l=`[${new Date().toLocaleTimeString('fr-FR')}] ${m}`;
+  console[e?'error':'log'](l);
+  LOG.push(e?`<span style="color:#f87">${l}</span>`:l);
+  const el=document.getElementById('dbg');
+  if(el.style.display!=='none')el.innerHTML=LOG.slice(-40).join('<br>');
+}
+function toggleDbg(){
+  const el=document.getElementById('dbg');
+  el.style.display=el.style.display==='none'?'block':'none';
+  if(el.style.display==='block')el.innerHTML=LOG.slice(-40).join('<br>')||'vide';
+}
+function banner(type,html){
+  const el=document.getElementById('banner');el.className=type;el.innerHTML=html;
+}
+function hideBanner(){document.getElementById('banner').className='';}
+
+// ══════════════════════════════════════════════════
+// API — JSON with proxy fallback
+// ══════════════════════════════════════════════════
+async function fetchJSON(url){
+  // Direct
+  try{
+    const r=await fetch(url,{signal:AbortSignal.timeout(7000)});
+    if(r.ok){const d=await r.json();dbg(`Direct ✓ ${url.substring(0,50)}`);return d;}
+  }catch(e){dbg(`Direct fail: ${e.message}`);}
+  // Proxies
+  for(let i=0;i<PROXIES.length;i++){
+    try{
+      const pUrl=PROXIES[i](url);
+      dbg(`Proxy ${i+1}…`);
+      const r=await fetch(pUrl,{signal:AbortSignal.timeout(10000)});
+      if(r.ok){
+        const t=await r.text();
+        const j=JSON.parse(t);
+        dbg(`Proxy ${i+1} ✓`);
+        return j;
+      }
+    }catch(e){dbg(`Proxy ${i+1}: ${e.message}`,true);}
+  }
+  throw new Error('Réseau inaccessible');
+}
+
+async function fetchCOT(kw){
+  const where=`market_and_exchange_names like '%25${encodeURIComponent(kw)}%25'`;
+  const url=`${CFTC}?$where=${where}&$order=report_date_as_yyyy_mm_dd+DESC&$limit=60`;
+  const data=await fetchJSON(url);
+  if(!Array.isArray(data)||!data.length)throw new Error(`0 résultats CFTC pour "${kw}"`);
+  dbg(`[${kw}] ${data.length} lignes ✓`);
+  return data;
+}
+
+// Batch FX: one call per base currency, multiple targets
+async function fetchAllPrices(){
+  const batches=[
+    {from:'EUR',to:'USD,GBP,JPY,AUD,CAD,CHF,NZD'},
+    {from:'GBP',to:'USD,JPY,AUD,CAD,CHF,NZD'},
+    {from:'USD',to:'JPY,CAD,CHF'},
+    {from:'AUD',to:'USD,JPY,CAD,CHF,NZD'},
+    {from:'NZD',to:'USD,JPY,CAD,CHF'},
+    {from:'CHF',to:'JPY'},
+    {from:'CAD',to:'JPY,CHF'},
+    {from:'XAU',to:'USD'},
+  ];
+  await Promise.all(batches.map(async({from,to})=>{
+    try{
+      const url=`${FX_BASE}?from=${from}&to=${to}`;
+      const data=await fetch(url,{signal:AbortSignal.timeout(6000)}).then(r=>r.json());
+      to.split(',').forEach(t=>{
+        if(data.rates&&data.rates[t]) ST.prices[`${from}/${t}`]=data.rates[t];
+      });
+      dbg(`FX ${from}: ✓`);
+    }catch(e){dbg(`FX ${from}: ${e.message}`,true);}
+  }));
+}
+
+// ══════════════════════════════════════════════════
+// DEMO DATA
+// ══════════════════════════════════════════════════
+function demoNets(ccy, weeks=54){
+  const{seed,scale}=BASE_COT[ccy];
+  let v=seed*scale*0.6;const now=new Date();
+  // pseudo-random but deterministic per currency
+  let s=seed*1000;
+  const rng=()=>{s=(s*16807+0)%2147483647;return(s/2147483647-.5)*2;};
+  return Array.from({length:weeks},(_,i)=>{
+    const d=new Date(now);d.setDate(d.getDate()-(weeks-1-i)*7);
+    v+=(rng()*scale*.22)+(seed*scale*.018);
+    v=Math.max(-scale*1.8,Math.min(scale*1.8,v));
+    return{date:d.toISOString().substring(0,10),net:Math.round(v)};
+  });
+}
+const DEMO_PX={
+  'EUR/USD':1.08245,'EUR/GBP':0.85612,'EUR/JPY':162.341,'EUR/AUD':1.64823,
+  'EUR/CAD':1.47512,'EUR/CHF':0.95234,'EUR/NZD':1.78963,
+  'GBP/USD':1.26318,'GBP/JPY':189.742,'GBP/AUD':1.92412,'GBP/CAD':1.72341,
+  'GBP/CHF':1.11234,'GBP/NZD':2.09123,
+  'USD/JPY':149.523,'USD/CAD':1.36089,'USD/CHF':0.87956,
+  'AUD/USD':0.65412,'AUD/JPY':97.823,'AUD/CAD':0.89123,'AUD/CHF':0.57512,
+  'AUD/NZD':1.08734,'NZD/USD':0.60341,'NZD/JPY':90.234,'NZD/CAD':0.82134,
+  'NZD/CHF':0.53012,'CHF/JPY':170.123,'CAD/JPY':109.823,'CAD/CHF':0.64823,
+  'XAU/USD':2341.50,
+};
+
+// ══════════════════════════════════════════════════
+// MATHS
+// ══════════════════════════════════════════════════
+function buildNets(raw){
+  return [...raw].reverse().map(d=>({
+    date:(d.report_date_as_yyyy_mm_dd||'').substring(0,10),
+    net:parseFloat(d.noncomm_positions_long_all||0)-parseFloat(d.noncomm_positions_short_all||0)
+  }));
+}
+function addZ(nets){
+  const v=nets.map(d=>d.net),m=v.reduce((a,b)=>a+b,0)/v.length;
+  const sd=Math.sqrt(v.reduce((a,b)=>a+(b-m)**2,0)/v.length)||1;
+  return nets.map(d=>({...d,z:(d.net-m)/sd}));
+}
+function sig(z){
+  if(z> 2.0)return{lbl:'SHORT FORT ▼▼',cls:'short',col:'#ff3d57'};
+  if(z> 1.5)return{lbl:'SHORT ▼',       cls:'short',col:'#ff3d57'};
+  if(z<-2.0)return{lbl:'LONG FORT ▲▲',  cls:'long', col:'#00e5b0'};
+  if(z<-1.5)return{lbl:'LONG ▲',         cls:'long', col:'#00e5b0'};
+  if(z> 0.8)return{lbl:'Légèrement −',   cls:'neutral',col:'#f5a623'};
+  if(z<-0.8)return{lbl:'Légèrement +',   cls:'neutral',col:'#f5a623'};
+  return           {lbl:'Neutre',         cls:'neutral',col:'#f5a623'};
+}
+
+// Pair z = z_base - z_quote (z_USD = 0)
+function pairZ(pair){
+  const zA=ST.baseZ[pair.base]??0;
+  const zB=ST.baseZ[pair.quote]??0;
+  return zA-zB;
+}
+
+function fmtN(n){const a=Math.abs(n),s=n>=0?'+':'-';return a>=100000?`${s}${(a/1e3).toFixed(0)}K`:a>=1000?`${s}${(a/1e3).toFixed(1)}K`:`${s}${a.toFixed(0)}`;}
+function fmtP(p,name){
+  if(!p&&p!==0)return'—';
+  const q=name.split('/')[1];
+  if(q==='JPY')return p.toFixed(3);
+  if(name==='XAU/USD')return p.toFixed(2);
+  return p.toFixed(5);
+}
+function fmtZ(z){return`${z>=0?'+':''}${z.toFixed(2)}σ`;}
+
+// ══════════════════════════════════════════════════
+// COMPUTE ALL PAIR DATA
+// ══════════════════════════════════════════════════
+function computePairs(){
+  ST.pairData=PAIRS.map(pair=>{
+    const z=pairZ(pair);
+    const s=sig(z);
+    const price=ST.prices[pair.name]??DEMO_PX[pair.name]??null;
+    const isSynthetic=pair.base!=='USD'&&pair.quote!=='USD';
+    const baseNets=ST.baseNets[pair.base]||[];
+    const lastBaseNet=baseNets.length?baseNets[baseNets.length-1].net:0;
+    const lastDate=baseNets.length?baseNets[baseNets.length-1].date:'—';
+    return{z,s,price,isSynthetic,lastBaseNet,lastDate};
+  });
+}
+
+// ══════════════════════════════════════════════════
+// RENDER — STRENGTH BAR
+// ══════════════════════════════════════════════════
+function renderStrength(){
+  const ccys=Object.keys(BASE_COT);
+  document.getElementById('strengthBar').innerHTML=ccys.map(ccy=>{
+    const z=ST.baseZ[ccy];
+    if(z===undefined)return`<div class="curr-chip"><div class="chip-name">${ccy}</div><div class="chip-z" style="color:var(--td)">—</div><div class="chip-mini-bar"></div></div>`;
+    const s=sig(z);
+    const clamped=Math.max(-3,Math.min(3,z));
+    const pct=((clamped+3)/6)*100;
+    const isLeft=pct<50;
+    const barW=Math.abs(pct-50);
+    return`<div class="curr-chip">
+      <div class="chip-name" style="color:${s.col}">${ccy}</div>
+      <div class="chip-z" style="color:${s.col}">${fmtZ(z)}</div>
+      <div class="chip-mini-bar">
+        <div class="chip-mini-fill" style="background:${s.col};width:${barW}%;${isLeft?'left:0':'right:0'}"></div>
+        <div style="position:absolute;top:50%;left:${pct}%;width:5px;height:5px;border-radius:50%;background:${s.col};transform:translate(-50%,-50%)"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════
+// RENDER — FILTERS
+// ══════════════════════════════════════════════════
+function renderFilters(){
+  document.getElementById('filtersBar').innerHTML=GROUPS.map(g=>
+    `<div class="fchip${ST.activeGroup===g?' active':''}" onclick="setGroup('${g}')">${g}</div>`
+  ).join('');
+}
+
+function setGroup(g){
+  ST.activeGroup=g;
+  renderFilters();
+  renderPairs();
+}
+
+// ══════════════════════════════════════════════════
+// RENDER — PAIRS LIST
+// ══════════════════════════════════════════════════
+function renderPairs(){
+  const filtered=PAIRS.filter(p=>ST.activeGroup==='Tous'||p.group===ST.activeGroup);
+
+  // Group by category
+  const grouped={};
+  filtered.forEach(p=>{
+    if(!grouped[p.group])grouped[p.group]=[];
+    grouped[p.group].push(p);
+  });
+
+  let html='';
+  Object.entries(grouped).forEach(([grp,pairs])=>{
+    html+=`<div class="group-header">${grp}</div>`;
+    pairs.forEach(pair=>{
+      const i=PAIRS.indexOf(pair);
+      const d=ST.pairData[i];
+      if(!d){
+        html+=`<div class="pair-row"><div><div class="pr-name">${pair.name}</div></div><div class="ld" style="padding:0"><div class="spin"></div></div><div></div></div>`;
+        return;
+      }
+      const{z,s,price,isSynthetic}=d;
+      const clamped=Math.max(-3,Math.min(3,z));
+      const pct=((clamped+3)/6)*100;
+      html+=`<div class="pair-row" onclick="openSheet(${i})">
+        <div>
+          <div class="pr-name">${pair.name}</div>
+          <div class="pr-type ${isSynthetic?'syn':''}">${isSynthetic?'synthétique':'direct USD'}</div>
+        </div>
+        <div class="pr-mid">
+          <div class="pr-zval" style="color:${s.col}">${fmtZ(z)}</div>
+          <div class="zbar-t">
+            <div class="zbar-neg"></div><div class="zbar-pos"></div>
+            <div class="zbar-cur" style="left:${pct}%;background:${s.col};color:${s.col}"></div>
+          </div>
+        </div>
+        <div class="pr-right">
+          <div class="pr-price">${fmtP(price,pair.name)}</div>
+          <span class="badge ${s.cls}">${s.lbl}</span>
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('pairsList').innerHTML=html;
+}
+
+// ══════════════════════════════════════════════════
+// RENDER — BOTTOM SHEET
+// ══════════════════════════════════════════════════
+function openSheet(i){
+  ST.selIdx=i;
+  const pair=PAIRS[i];
+  const d=ST.pairData[i];if(!d)return;
+  const{z,s,price,isSynthetic,lastBaseNet,lastDate}=d;
+  const clamped=Math.max(-3,Math.min(3,z));
+  const pct=((clamped+3)/6)*100;
+
+  document.getElementById('shPair').textContent=pair.name+(ST.demo?' ⚠':'');
+  document.getElementById('shSig').innerHTML=`<span class="badge ${s.cls}">${s.lbl}</span>`;
+  document.getElementById('shPrice').textContent=fmtP(price,pair.name);
+  document.getElementById('shZ').textContent=fmtZ(z);
+  document.getElementById('shZ').style.color=s.col;
+  document.getElementById('shNet').textContent=fmtN(lastBaseNet);
+  document.getElementById('shNet').style.color=lastBaseNet>=0?'#00e5b0':'#ff3d57';
+  document.getElementById('shDate').textContent=lastDate;
+  const zc=document.getElementById('shZcur');
+  zc.style.left=`${pct}%`;zc.style.background=s.col;zc.style.color=s.col;
+
+  // Chart label
+  const baseKey=pair.base==='USD'?pair.quote:pair.base;
+  const quoteKey=(pair.base!=='USD'&&pair.quote!=='USD')?pair.quote:null;
+  document.getElementById('shChartLbl').textContent=
+    quoteKey?`${baseKey} (vert) vs ${quoteKey} (orange) — Net Positioning`
+    :`${baseKey} — Net Positioning (contrats futures)`;
+
+  // Chart
+  setTimeout(()=>drawSheetChart(pair),40);
+
+  // Interpretation
+  const baseLabel=pair.base==='USD'?pair.quote:pair.base;
+  const quoteLabel=pair.quote==='USD'?pair.base:pair.quote;
+  const baseZ=ST.baseZ[pair.base]??0, quoteZ=ST.baseZ[pair.quote]??0;
+
+  let interpBody='';
+  if(s.cls==='short'){
+    interpBody=`Le Z-Score composite est à un <strong>extrême long</strong> sur 52 semaines${isSynthetic?` (${pair.base} sur-exposé long, ${pair.quote} sous-exposé short)`:''}. Ce niveau de sur-exposition précède historiquement des retournements baissiers de <strong>2 à 8 semaines</strong>.<br><br><em>→ Biais <strong style="color:#ff3d57">SHORT</strong> ${pair.name}. Attends un setup technique confirmé en Daily/H4.</em>`;
+  } else if(s.cls==='long'){
+    interpBody=`Le Z-Score composite est à un <strong>extrême short</strong> sur 52 semaines${isSynthetic?` (${pair.base} sous-exposé, ${pair.quote} sur-exposé)`:''}. Un short squeeze peut déclencher un rally significatif.<br><br><em>→ Biais <strong style="color:#00e5b0">LONG</strong> ${pair.name}. Attends un setup technique confirmé en Daily/H4.</em>`;
+  } else {
+    interpBody=`Zone neutre sur 52 semaines. Pas d'extrême contrarian exploitable. <em>Utilise d'autres confluences (taux réels, momentum, structure technique) pour définir ta direction.</em>`;
+  }
+  if(isSynthetic){
+    interpBody+=`<br><br><em style="font-size:9px;color:var(--td)">Signal dérivé : Z(${pair.base}) ${baseZ>=0?'+':''}${baseZ.toFixed(2)}σ − Z(${pair.quote}) ${quoteZ>=0?'+':''}${quoteZ.toFixed(2)}σ = ${fmtZ(z)}</em>`;
+  }
+  document.getElementById('shInterp').innerHTML=interpBody;
+
+  // Source note
+  document.getElementById('shSource').innerHTML=
+    ST.demo?'⚠ Données de démonstration — CFTC non accessible depuis cette interface.':
+    `Source : CFTC Legacy COT Futures · ${isSynthetic?'Signal synthétique (2 séries COT)':'Signal direct'}`;
+
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('overlay').classList.add('active');
+}
+
+function closeSheet(){
+  document.getElementById('sheet').classList.remove('open');
+  document.getElementById('overlay').classList.remove('active');
+  ST.selIdx=null;
+}
+
+// ══════════════════════════════════════════════════
+// CHART — Bottom sheet
+// ══════════════════════════════════════════════════
+function drawSheetChart(pair){
+  const canvas=document.getElementById('shChart');if(!canvas)return;
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.parentElement.clientWidth||340,H=100;
+  canvas.width=W*dpr;canvas.height=H*dpr;
+  const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);
+
+  const baseKey=pair.base==='USD'?pair.quote:pair.base;
+  const quoteKey=(pair.base!=='USD'&&pair.quote!=='USD')?pair.quote:null;
+
+  const netsA=ST.baseNets[baseKey]||[];
+  const netsB=quoteKey?(ST.baseNets[quoteKey]||[]):[];
+  const isSynthetic=quoteKey!==null;
+
+  if(!netsA.length){
+    ctx.fillStyle='rgba(74,96,112,.5)';ctx.font='10px JetBrains Mono';
+    ctx.textAlign='center';ctx.fillText('Pas de données',W/2,H/2);
+    return;
+  }
+
+  const pad={l:44,r:8,t:6,b:20};
+  const iW=W-pad.l-pad.r,iH=H-pad.t-pad.b;
+
+  function drawSeries(nets, color, invert=false){
+    const vals=nets.map(d=>invert?-d.net:d.net);
+    const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+    const tx=j=>pad.l+(j/(vals.length-1))*iW;
+    const ty=v=>pad.t+iH-((v-mn)/rng)*iH;
+
+    // Grid on first series
+    if(color==='#00e5b0'){
+      for(let g=0;g<=3;g++){
+        const yy=pad.t+(iH/3)*g,val=mx-(rng/3)*g;
+        ctx.strokeStyle='rgba(255,255,255,.035)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(pad.l+iW,yy);ctx.stroke();
+        ctx.fillStyle='rgba(74,96,112,.75)';ctx.font='8px JetBrains Mono';ctx.textAlign='right';
+        ctx.fillText(fmtN(val),pad.l-3,yy+3);
+      }
+      if(mn<0&&mx>0){
+        const yy=ty(0);
+        ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(pad.l+iW,yy);ctx.stroke();
+      }
+    }
+
+    const z0=Math.max(pad.t,Math.min(pad.t+iH,ty(0)));
+    ctx.beginPath();vals.forEach((v,j)=>j===0?ctx.moveTo(tx(j),ty(v)):ctx.lineTo(tx(j),ty(v)));
+    ctx.lineTo(tx(vals.length-1),z0);ctx.lineTo(tx(0),z0);ctx.closePath();
+    ctx.fillStyle=color+'12';ctx.fill();
+
+    ctx.beginPath();vals.forEach((v,j)=>j===0?ctx.moveTo(tx(j),ty(v)):ctx.lineTo(tx(j),ty(v)));
+    ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.lineJoin='round';ctx.stroke();
+    ctx.beginPath();ctx.arc(tx(vals.length-1),ty(vals[vals.length-1]),3.5,0,Math.PI*2);
+    ctx.fillStyle=color;ctx.fill();
+
+    // Dates on bottom
+    if(color==='#00e5b0'){
+      ctx.fillStyle='rgba(74,96,112,.7)';ctx.font='8px JetBrains Mono';ctx.textAlign='center';
+      [0,Math.floor(nets.length/2),nets.length-1].forEach(idx=>{
+        if(nets[idx]?.date)ctx.fillText(nets[idx].date.substring(5),tx(idx),H-3);
+      });
+    }
+  }
+
+  const invert=pair.base==='USD';// e.g. USD/JPY: invert JPY net
+  drawSeries(netsA,'#00e5b0',invert);
+  if(isSynthetic&&netsB.length) drawSeries(netsB,'#f5a623',false);
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+async function init(){
+  document.getElementById('sDot').className='dot loading';
+  document.getElementById('sTxt').textContent='…';
+  document.getElementById('pairsList').innerHTML=`<div class="ld"><div class="spin"></div>Connexion CFTC (8 séries)…</div>`;
+  LOG.length=0;ST.demo=false;hideBanner();
+  dbg('=== INIT ===');
+
+  renderFilters();
+
+  let okCount=0;
+  const failed=[];
+
+  // Fetch all 8 base COT series in parallel
+  const cotTasks=Object.entries(BASE_COT).map(async([ccy,conf])=>{
+    try{
+      const raw=await fetchCOT(conf.kw);
+      const nets=addZ(buildNets(raw));
+      ST.baseNets[ccy]=nets;
+      ST.baseZ[ccy]=nets[nets.length-1].z;
+      okCount++;
+      document.getElementById('sTxt').textContent=`${okCount}/8`;
+      renderStrength();
+    }catch(e){
+      dbg(`${ccy}: ${e.message}`,true);
+      failed.push(ccy);
+      // Demo fallback for this currency
+      const nets=addZ(demoNets(ccy));
+      ST.baseNets[ccy]=nets;
+      ST.baseZ[ccy]=nets[nets.length-1].z;
+      renderStrength();
+    }
+  });
+
+  // Fetch FX prices in parallel (Frankfurter supports CORS natively)
+  const fxTask=fetchAllPrices();
+
+  await Promise.all([...cotTasks,fxTask]);
+
+  computePairs();
+  renderStrength();
+  renderPairs();
+
+  const now=new Date().toLocaleTimeString('fr-FR');
+  if(failed.length===0){
+    document.getElementById('sDot').className='dot live';
+    document.getElementById('sTxt').textContent=`Live · ${now}`;
+    banner('ok',`✓ Données CFTC en direct — 8 séries chargées · ${now}`);
+    setTimeout(hideBanner,5000);
+  } else if(failed.length===Object.keys(BASE_COT).length){
+    ST.demo=true;
+    document.getElementById('sDot').className='dot error';
+    document.getElementById('sTxt').textContent='Démo';
+    banner('bad','⚠ CFTC inaccessible (CORS). <strong>Données de démonstration.</strong> Pour les données live → déploie sur GitHub Pages (voir tutoriel dans le message).');
+  } else {
+    document.getElementById('sDot').className='dot live';
+    document.getElementById('sTxt').textContent=`Partiel · ${now}`;
+    banner('warn',`⚠ Démo pour : ${failed.join(', ')}. Autres séries : live.`);
+  }
+
+  // Refresh open sheet if needed
+  if(ST.selIdx!==null) openSheet(ST.selIdx);
+}
+
+// Launch
+init();
+</script>
+</body>
+</html>
